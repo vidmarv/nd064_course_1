@@ -18,6 +18,56 @@ def get_post(post_id):
     connection.close()
     return post
 
+
+# Connect to db = `database.db`
+def get_db_connection():
+    connection = sqlite3.connect('database.db')
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+
+
+def get_article_count(metrics_obj):
+    """
+    Count the number of articles and increment the number of connections used
+    Parameters:
+    metrics_obj (dict): Dictionary with basic data for metrics endpoint response
+    """
+    connection = get_db_connection()
+    article_count = connection.execute('SELECT count(*) FROM posts').fetchone()
+    connection.close()
+
+    metrics_obj['db_connection_count'] += 1
+    metrics_obj['post_count'] = article_count[0]
+
+
+def valid_db_connection():
+    """
+    Checks if connecting to database is successful.
+    """
+    try:
+        connection = get_db_connection()
+        connection.close()
+    except:
+        raise Exception("Database connection failure")
+
+
+def post_table_exists():
+    """
+    Checks if POST table exists.
+    """
+    try:
+        connection = get_db_connection()
+        connection.execute('SELECT 1 FROM posts').fetchone()
+        connection.close()
+    except:
+        raise Exception("Table 'posts' does not exist")
+
+
+
+
+
 # Define the Flask application
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your secret key'
@@ -64,6 +114,46 @@ def create():
             return redirect(url_for('index'))
 
     return render_template('create.html')
+
+
+
+
+
+# adding /healthz endpoint
+@app.route('/healthz')
+def healthcheck():
+    response = app.response_class(
+            response=json.dumps({"result":"OK - healthy"}),
+            status=200,
+            mimetype='application/json'
+    )
+
+    app.logger.info('Status request successfull')
+    return response
+
+# adding /metrics endpoint
+@app.route('/metrics')
+def metrics():
+    metrics_obj = {
+        'db_connection_count': 0,
+        'post_count': None
+    }
+
+    get_article_count(metrics_obj)
+
+    response = app.response_class(
+        response=json.dumps(metrics_obj),
+        status=200,
+        mimetype='application/json')
+
+    return response
+    #response = app.response_class(
+    #        response=json.dumps({"status":"success","code":0,"data":{"UserCount":140,"UserCountActive":23}}),
+    #        status=200,
+    #        mimetype='application/json'
+    #)
+
+
 
 # start the application on port 3111
 if __name__ == "__main__":
