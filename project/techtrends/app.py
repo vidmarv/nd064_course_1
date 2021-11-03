@@ -21,7 +21,11 @@ def get_post(post_id):
 
 
 # Connect to db = `database.db`
+db_connects = 0 
+
 def get_db_connection():
+    global db_connects
+    db_connects = db_connects + 1
     connection = sqlite3.connect('database.db')
     connection.row_factory = sqlite3.Row
     return connection
@@ -139,6 +143,8 @@ def healthcheck():
 # adding /metrics endpoint
 @app.route('/metrics')
 def metrics():
+    global db_connects
+
     metrics_obj = {
         'db_connection_count': 0,
         'post_count': None
